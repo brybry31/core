@@ -19,6 +19,7 @@ struct BotChatReply
 {
     ObjectGuid botGuid;
     std::string text;
+	uint32 deliverAt;
 };
 
 class BotChatQueue

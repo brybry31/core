@@ -53,11 +53,17 @@ bool BotChatQueue::Enqueue(ObjectGuid botGuid, std::string const& prompt)
 bool BotChatQueue::PopReply(BotChatReply& out)
 {
     std::lock_guard<std::mutex> lock(m_replyMutex);
-    if (m_replies.empty())
-        return false;
-    out = m_replies.front();
-    m_replies.pop_front();
-    return true;
+    uint32 now = NowSeconds();
+    for (auto it = m_replies.begin(); it != m_replies.end(); ++it)
+    {
+        if (it->deliverAt <= now)
+        {
+            out = *it;
+            m_replies.erase(it);
+            return true;
+        }
+    }
+    return false;
 }
 
 void BotChatQueue::WorkerLoop()
@@ -125,6 +131,7 @@ void BotChatQueue::WorkerLoop()
             BotChatReply reply;
             reply.botGuid = req.botGuid;
             reply.text = text;
+            reply.deliverAt = NowSeconds() + 2 + (rand() % 11);
             std::lock_guard<std::mutex> lock(m_replyMutex);
             m_replies.push_back(reply);
         }

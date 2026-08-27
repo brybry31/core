@@ -666,7 +666,14 @@ void PartyBotAI::OnPacketReceived(WorldPacket const* packet)
                     prompt += GetClassName(pTalker->GetClass());
                 }
                 prompt += ". Reply in under 15 words, lowercase, casual, like a real player typing quickly. No quotation marks. They say: " + msg;
-                sBotChatQueue.Enqueue(me->GetObjectGuid(), prompt);
+                uint32 nowSec = (uint32)time(nullptr);
+                bool namedMe = msg.find(me->GetName()) != std::string::npos;
+                uint32 chance = namedMe ? 95 : (msgType == CHAT_MSG_PARTY ? 60 : 35);
+                if (nowSec - m_lastChatReplyTime >= 8 && (uint32)(rand() % 100) < chance)
+                {
+                    m_lastChatReplyTime = nowSec;
+                    sBotChatQueue.Enqueue(me->GetObjectGuid(), prompt);
+                }
             }
         }
     }
