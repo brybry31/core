@@ -565,6 +565,7 @@ void PartyBotAI::OnPacketReceived(WorldPacket const* packet)
                 if (Player* pSender = ObjectAccessor::FindPlayer(senderGuid))
                     senderName = pSender->GetName();
                 printf("[BOTCHAT] %s heard %s say: %s\n", me->GetName(), senderName.c_str(), msg.c_str());
+me->Say(("echo: " + msg).c_str(), LANG_UNIVERSAL);
             }
         }
     }
