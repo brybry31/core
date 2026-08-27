@@ -578,6 +578,10 @@ static std::string AskOllama(std::string const& playerMsg)
     {
         auto parsed = nlohmann::json::parse(result);
         std::string reply = parsed["response"];
+        while (!reply.empty() && (reply.front() == '"' || reply.front() == '\'' || reply.front() == '\n' || reply.front() == ' '))
+            reply.erase(0, 1);
+        while (!reply.empty() && (reply.back() == '"' || reply.back() == '\'' || reply.back() == '\n' || reply.back() == ' '))
+            reply.pop_back();
         if (reply.size() > 250)
             reply = reply.substr(0, 250);
         return reply;
