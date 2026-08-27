@@ -29,6 +29,7 @@
 #include "Utilities/Random.h"
 #include <curl/curl.h>
 #include "../../../dep/json/json.hpp"
+#include "BotChatQueue.h"
 
 #include <random>
 
@@ -591,6 +592,38 @@ static std::string AskOllama(std::string const& playerMsg)
         return "";
     }
 }
+static char const* GetRaceName(uint8 race)
+{
+    switch (race)
+    {
+        case RACE_HUMAN: return "human";
+        case RACE_ORC: return "orc";
+        case RACE_DWARF: return "dwarf";
+        case RACE_NIGHTELF: return "night elf";
+        case RACE_UNDEAD: return "undead forsaken";
+        case RACE_TAUREN: return "tauren";
+        case RACE_GNOME: return "gnome";
+        case RACE_TROLL: return "troll";
+        default: return "adventurer";
+    }
+}
+
+static char const* GetClassName(uint8 cls)
+{
+    switch (cls)
+    {
+        case CLASS_WARRIOR: return "warrior";
+        case CLASS_PALADIN: return "paladin";
+        case CLASS_HUNTER: return "hunter";
+        case CLASS_ROGUE: return "rogue";
+        case CLASS_PRIEST: return "priest";
+        case CLASS_SHAMAN: return "shaman";
+        case CLASS_MAGE: return "mage";
+        case CLASS_WARLOCK: return "warlock";
+        case CLASS_DRUID: return "druid";
+        default: return "adventurer";
+    }
+}
 void PartyBotAI::OnPacketReceived(WorldPacket const* packet)
 {
     if (packet->GetOpcode() == SMSG_MESSAGECHAT)
@@ -615,9 +648,25 @@ void PartyBotAI::OnPacketReceived(WorldPacket const* packet)
                 if (Player* pSender = ObjectAccessor::FindPlayer(senderGuid))
                     senderName = pSender->GetName();
                 printf("[BOTCHAT] %s heard %s (type=%u lang=%u): %s\n", me->GetName(), senderName.c_str(), (uint32)msgType, lang, msg.c_str());
-                std::string reply = AskOllama(msg);
-                if (!reply.empty())
-                    me->Say(reply.c_str(), LANG_UNIVERSAL);
+                std::string prompt = "You are ";
+                prompt += me->GetName();
+                prompt += ", a level " + std::to_string(me->GetLevel());
+                prompt += " ";
+                prompt += GetRaceName(me->GetRace());
+                prompt += " ";
+                prompt += GetClassName(me->GetClass());
+                prompt += " in World of Warcraft, vanilla patch 1.12. The year is before the Burning Crusade; never mention anything from later expansions. You are grouped with a player named ";
+                prompt += senderName;
+                if (Player* pTalker = ObjectAccessor::FindPlayer(senderGuid))
+                {
+                    prompt += ", a level " + std::to_string(pTalker->GetLevel());
+                    prompt += " ";
+                    prompt += GetRaceName(pTalker->GetRace());
+                    prompt += " ";
+                    prompt += GetClassName(pTalker->GetClass());
+                }
+                prompt += ". Reply in under 15 words, lowercase, casual, like a real player typing quickly. No quotation marks. They say: " + msg;
+                sBotChatQueue.Enqueue(me->GetObjectGuid(), prompt);
             }
         }
     }
@@ -680,6 +729,12 @@ void PartyBotAI::OnPlayerLogin()
 
 void PartyBotAI::UpdateAI(uint32 const diff)
 {
+    BotChatReply chatReply;
+    while (sBotChatQueue.PopReply(chatReply))
+    {
+        if (Player* pBot = ObjectAccessor::FindPlayer(chatReply.botGuid))
+            pBot->Say(chatReply.text.c_str(), LANG_UNIVERSAL);
+    }
     m_updateTimer.Update(diff);
     if (m_updateTimer.Passed())
         m_updateTimer.Reset(PB_UPDATE_INTERVAL);
