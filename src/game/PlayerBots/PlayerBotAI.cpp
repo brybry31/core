@@ -24,6 +24,7 @@
 #include "MapManager.h"
 #include "MoveSpline.h"
 #include "Utilities/Random.h"
+#include "BotChatQueue.h"
 
 bool PlayerBotAI::OnSessionLoaded(PlayerBotEntry* entry, WorldSession* sess)
 {

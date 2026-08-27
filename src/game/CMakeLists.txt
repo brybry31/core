@@ -190,6 +190,7 @@ set (game_SRCS
     PacketBroadcast/MovementBroadcaster.cpp
     PacketBroadcast/PlayerBroadcaster.cpp
     PlayerBots/PartyBotAI.cpp
+	PlayerBots/BotChatQueue.cpp
     PlayerBots/CombatBotBaseAI.cpp
     PlayerBots/BattleBotAI.cpp
     PlayerBots/BattleBotWaypoints.cpp
@@ -442,6 +443,7 @@ set (game_SRCS
     PacketBroadcast/PlayerBroadcaster.h
     PlayerBots/CombatBotBaseAI.h
     PlayerBots/PartyBotAI.h
+	PlayerBots/BotChatQueue.h
     PlayerBots/BattleBotAI.h
     PlayerBots/BattleBotWaypoints.h
     PlayerBots/PlayerBotAI.h
