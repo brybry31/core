@@ -27,6 +27,8 @@
 #include "SpellAuras.h"
 #include "Chat.h"
 #include "Utilities/Random.h"
+#include <curl/curl.h>
+#include "../../../dep/json/json.hpp"
 
 #include <random>
 
@@ -540,7 +542,51 @@ void PartyBotAI::AddToPlayerGroup()
         group->AddMember(me->GetObjectGuid(), me->GetName());
     }
 }
+static size_t OllamaWriteCallback(void* contents, size_t size, size_t nmemb, void* userp)
+{
+    ((std::string*)userp)->append((char*)contents, size * nmemb);
+    return size * nmemb;
+}
 
+static std::string AskOllama(std::string const& playerMsg)
+{
+    CURL* curl = curl_easy_init();
+    if (!curl)
+        return "";
+
+    nlohmann::json req;
+    req["model"] = "llama3.1:8b";
+    req["prompt"] = "You are a gruff dwarf warrior in World of Warcraft, patch 1.12. Reply in under 15 words, lowercase, casual. A player says to you: " + playerMsg;
+    req["stream"] = false;
+    req["options"]["num_predict"] = 60;
+    std::string body = req.dump();
+
+    std::string result;
+    curl_easy_setopt(curl, CURLOPT_URL, "http://localhost:11434/api/generate");
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.c_str());
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, OllamaWriteCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &result);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
+
+    CURLcode res = curl_easy_perform(curl);
+    curl_easy_cleanup(curl);
+
+    if (res != CURLE_OK)
+        return "";
+
+    try
+    {
+        auto parsed = nlohmann::json::parse(result);
+        std::string reply = parsed["response"];
+        if (reply.size() > 250)
+            reply = reply.substr(0, 250);
+        return reply;
+    }
+    catch (...)
+    {
+        return "";
+    }
+}
 void PartyBotAI::OnPacketReceived(WorldPacket const* packet)
 {
     if (packet->GetOpcode() == SMSG_MESSAGECHAT)
@@ -565,7 +611,9 @@ void PartyBotAI::OnPacketReceived(WorldPacket const* packet)
                 if (Player* pSender = ObjectAccessor::FindPlayer(senderGuid))
                     senderName = pSender->GetName();
                 printf("[BOTCHAT] %s heard %s (type=%u lang=%u): %s\n", me->GetName(), senderName.c_str(), (uint32)msgType, lang, msg.c_str());
-me->Say(("echo: " + msg).c_str(), LANG_UNIVERSAL);
+                std::string reply = AskOllama(msg);
+                if (!reply.empty())
+                    me->Say(reply.c_str(), LANG_UNIVERSAL);
             }
         }
     }
