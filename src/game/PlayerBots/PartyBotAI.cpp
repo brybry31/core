@@ -543,7 +543,31 @@ void PartyBotAI::AddToPlayerGroup()
 
 void PartyBotAI::OnPacketReceived(WorldPacket const* packet)
 {
-    //printf("Bot received %s\n", LookupOpcodeName(packet->GetOpcode()));
+    if (packet->GetOpcode() == SMSG_MESSAGECHAT)
+    {
+        WorldPacket copy(*packet);
+        uint8 msgType;
+        uint32 lang;
+        ObjectGuid senderGuid;
+        uint32 msgLen;
+        std::string msg;
+        copy >> msgType;
+        copy >> lang;
+        if (msgType == CHAT_MSG_SAY || msgType == CHAT_MSG_PARTY || msgType == CHAT_MSG_YELL)
+        {
+            copy >> senderGuid;
+            copy >> senderGuid;
+            copy >> msgLen;
+            copy >> msg;
+            if (senderGuid != me->GetObjectGuid())
+            {
+                std::string senderName = "unknown";
+                if (Player* pSender = ObjectAccessor::FindPlayer(senderGuid))
+                    senderName = pSender->GetName();
+                printf("[BOTCHAT] %s heard %s say: %s\n", me->GetName(), senderName.c_str(), msg.c_str());
+            }
+        }
+    }
     switch (packet->GetOpcode())
     {
         case SMSG_LEARNED_SPELL:

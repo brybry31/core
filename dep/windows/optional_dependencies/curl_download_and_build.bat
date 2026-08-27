@@ -16,11 +16,14 @@ set aliases[4]=Visual Studio 2022
 set paths[5]=C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat
 set aliases[5]=Visual Studio 2022 (Enterprise)
 
+set paths[6]=C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\vcvarsall.bat
+set aliases[6]=Visual Studio 2026
+
 set available_paths=
 set available_aliases=
 set count=0
 
-for /l %%i in (0, 1, 5) do (
+for /l %%i in (0, 1, 6) do (
     if exist "!paths[%%i]!" (
         set available_paths[!count!]=!paths[%%i]!
         set available_aliases[!count!]=!aliases[%%i]!
