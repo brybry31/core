@@ -559,12 +559,12 @@ void PartyBotAI::OnPacketReceived(WorldPacket const* packet)
             copy >> senderGuid;
             copy >> msgLen;
             copy >> msg;
-            if (senderGuid != me->GetObjectGuid())
+            if (senderGuid != me->GetObjectGuid() && lang != LANG_ADDON)
             {
                 std::string senderName = "unknown";
                 if (Player* pSender = ObjectAccessor::FindPlayer(senderGuid))
                     senderName = pSender->GetName();
-                printf("[BOTCHAT] %s heard %s say: %s\n", me->GetName(), senderName.c_str(), msg.c_str());
+                printf("[BOTCHAT] %s heard %s (type=%u lang=%u): %s\n", me->GetName(), senderName.c_str(), (uint32)msgType, lang, msg.c_str());
 me->Say(("echo: " + msg).c_str(), LANG_UNIVERSAL);
             }
         }
