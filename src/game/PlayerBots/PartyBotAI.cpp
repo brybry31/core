@@ -15,6 +15,7 @@
 */
 
 #include "PartyBotAI.h"
+#include "PlayerBotAI.h"
 #include "Player.h"
 #include "CreatureAI.h"
 #include "MotionMaster.h"
@@ -597,38 +598,6 @@ static std::string AskOllama(std::string const& playerMsg)
         return "";
     }
 }
-static char const* GetRaceName(uint8 race)
-{
-    switch (race)
-    {
-        case RACE_HUMAN: return "human";
-        case RACE_ORC: return "orc";
-        case RACE_DWARF: return "dwarf";
-        case RACE_NIGHTELF: return "night elf";
-        case RACE_UNDEAD: return "undead forsaken";
-        case RACE_TAUREN: return "tauren";
-        case RACE_GNOME: return "gnome";
-        case RACE_TROLL: return "troll";
-        default: return "adventurer";
-    }
-}
-
-static char const* GetClassName(uint8 cls)
-{
-    switch (cls)
-    {
-        case CLASS_WARRIOR: return "warrior";
-        case CLASS_PALADIN: return "paladin";
-        case CLASS_HUNTER: return "hunter";
-        case CLASS_ROGUE: return "rogue";
-        case CLASS_PRIEST: return "priest";
-        case CLASS_SHAMAN: return "shaman";
-        case CLASS_MAGE: return "mage";
-        case CLASS_WARLOCK: return "warlock";
-        case CLASS_DRUID: return "druid";
-        default: return "adventurer";
-    }
-}
 
 int16 PartyBotAI::GetAffinity(uint32 playerGuid)
 {
@@ -676,147 +645,6 @@ void PartyBotAI::AdjustAffinity(uint32 playerGuid, int16 delta)
         me->GetGUIDLow(), playerGuid, value, (uint32)time(nullptr), value, (uint32)time(nullptr));
 }
 
-static std::string BuildPersona(Player* me)
-{
-    static char const* temperaments[] = {
-        "gruff and impatient",
-        "cheerful and chatty",
-        "quiet and blunt",
-        "sarcastic and dry",
-        "nervous and overly polite",
-        "cocky and boastful",
-        "weary and world-tired",
-        "friendly but easily distracted"
-    };
-
-    static char const* quirks[] = {
-        "You complain about your gear a lot.",
-        "You are always broke and mention gold often.",
-        "You think you are underrated at your class.",
-        "You are obsessed with finding a good grinding spot.",
-        "You bring up an old wipe you still resent.",
-        "You are saving up for a mount and mention it.",
-        "You dislike crowded cities.",
-        "You are convinced the drop rates are rigged."
-    };
-
-    static char const* styles[] = {
-        "You type in short fragments and abbreviate a lot.",
-        "You rarely use punctuation.",
-        "You use vanilla wow slang like lf1m, wtb, oom, ty, np.",
-        "You sometimes trail off mid sentence."
-    };
-
-    uint32 h = me->GetObjectGuid().GetCounter();
-    std::string s = " Your personality is ";
-    s += temperaments[h % 8];
-    s += ". ";
-    s += quirks[(h / 8) % 8];
-    s += " ";
-    s += styles[(h / 64) % 4];
-    return s;
-}
-
-static char const* GetZoneName(uint32 zoneId)
-{
-    switch (zoneId)
-    {
-        // Eastern Kingdoms
-        case 1:    return "Dun Morogh";
-        case 3:    return "Badlands";
-        case 4:    return "Blasted Lands";
-        case 8:    return "Swamp of Sorrows";
-        case 10:   return "Duskwood";
-        case 11:   return "Wetlands";
-        case 12:   return "Elwynn Forest";
-        case 25:   return "Blackrock Mountain";
-        case 28:   return "Western Plaguelands";
-        case 33:   return "Stranglethorn Vale";
-        case 36:   return "Alterac Mountains";
-        case 38:   return "Loch Modan";
-        case 40:   return "Westfall";
-        case 41:   return "Deadwind Pass";
-        case 44:   return "Redridge Mountains";
-        case 45:   return "Arathi Highlands";
-        case 46:   return "Burning Steppes";
-        case 47:   return "The Hinterlands";
-        case 51:   return "Searing Gorge";
-        case 85:   return "Tirisfal Glades";
-        case 87:   return "Gilneas";
-        case 130:  return "Silverpine Forest";
-        case 139:  return "Eastern Plaguelands";
-        case 141:  return "Teldrassil";
-        case 148:  return "Darkshore";
-        case 267:  return "Hillsbrad Foothills";
-        case 331:  return "Ashenvale";
-        case 357:  return "Feralas";
-        case 361:  return "Felwood";
-        case 400:  return "Thousand Needles";
-        case 405:  return "Desolace";
-        case 406:  return "Stonetalon Mountains";
-        case 440:  return "Tanaris";
-        case 490:  return "Un'Goro Crater";
-        case 493:  return "Moonglade";
-        case 618:  return "Winterspring";
-        case 1377: return "Silithus";
-        case 1519: return "Stormwind City";
-        case 1537: return "Ironforge";
-        case 1497: return "Undercity";
-        case 1637: return "Orgrimmar";
-        case 1638: return "Thunder Bluff";
-        case 1657: return "Darnassus";
-        case 215:  return "Mulgore";
-        case 14:   return "Durotar";
-        case 17:   return "The Barrens";
-        case 15:   return "Dustwallow Marsh";
-        case 16:   return "Azshara";
-        case 2597: return "Alterac Valley";
-        case 3277: return "Warsong Gulch";
-        case 3358: return "Arathi Basin";
-        default:   return nullptr;
-    }
-}
-
-static std::string BuildSituation(Player* me)
-{
-    std::string s;
-
-    if (char const* zone = GetZoneName(me->GetZoneId()))
-    {
-        s += " You are currently in ";
-        s += zone;
-        s += ".";
-    }
-    else
-        printf("[ZONE] unmapped zone id %u\n", me->GetZoneId());
-        
-    uint32 hpPct = me->GetMaxHealth() ? (uint32)((me->GetHealth() * 100) / me->GetMaxHealth()) : 100;
-    if (me->IsInCombat())
-        s += " You are currently in combat and fighting.";
-    else if (hpPct < 40)
-        s += " You are badly wounded and resting.";
-    else if (hpPct < 80)
-        s += " You are a bit beaten up but fine.";
-
-    std::list<Player*> nearby;
-    MaNGOS::AnyPlayerInObjectRangeCheck check(me, 40.0f);
-    MaNGOS::PlayerListSearcher<MaNGOS::AnyPlayerInObjectRangeCheck> searcher(nearby, check);
-    Cell::VisitWorldObjects(me, searcher, 40.0f);
-
-    uint32 others = 0;
-    for (Player* p : nearby)
-        if (p != me)
-            ++others;
-
-    if (others == 0)
-        s += " Nobody else is around.";
-    else if (others == 1)
-        s += " There is one other person nearby.";
-    else
-        s += " There are " + std::to_string(others) + " other people nearby.";
-
-    return s;
-}
 void PartyBotAI::OnPacketReceived(WorldPacket const* packet)
 {
     switch (packet->GetOpcode())
@@ -871,104 +699,7 @@ void PartyBotAI::OnPacketReceived(WorldPacket const* packet)
             }
         }
     }
-    if (packet->GetOpcode() == SMSG_MESSAGECHAT)
-    {
-        WorldPacket copy(*packet);
-        uint8 msgType;
-        uint32 lang;
-        ObjectGuid senderGuid;
-        uint32 msgLen;
-        std::string msg;
-        copy >> msgType;
-        copy >> lang;
-        if (msgType == CHAT_MSG_SAY || msgType == CHAT_MSG_PARTY || msgType == CHAT_MSG_YELL)
-        {
-            copy >> senderGuid;
-            copy >> senderGuid;
-            copy >> msgLen;
-            copy >> msg;
-            if (senderGuid != me->GetObjectGuid() && lang != LANG_ADDON)
-            {
-                std::string senderName = "unknown";
-                bool senderIsBot = false;
-                if (Player* pSender = ObjectAccessor::FindPlayer(senderGuid))
-                {
-                    senderName = pSender->GetName();
-                    senderIsBot = pSender->GetSession() && pSender->GetSession()->GetBot() != nullptr;
-                }
-                printf("[BOTCHAT] %s heard %s (type=%u lang=%u): %s\n", me->GetName(), senderName.c_str(), (uint32)msgType, lang, msg.c_str());
-                m_chatHistory.push_back(senderName + ": " + msg);
-                while (m_chatHistory.size() > 10)
-                    m_chatHistory.pop_front();
-                std::string prompt = "You are ";
-                prompt += me->GetName();
-                prompt += ", a level " + std::to_string(me->GetLevel());
-                prompt += " ";
-                prompt += GetRaceName(me->GetRace());
-                prompt += " ";
-                prompt += GetClassName(me->GetClass());
-                prompt += " in World of Warcraft, vanilla patch 1.12. The year is before the Burning Crusade; never mention anything from later expansions. You are grouped with a player named ";
-                prompt += senderName;
-                if (Player* pTalker = ObjectAccessor::FindPlayer(senderGuid))
-                {
-                    prompt += ", a level " + std::to_string(pTalker->GetLevel());
-                    prompt += " ";
-                    prompt += GetRaceName(pTalker->GetRace());
-                    prompt += " ";
-                    prompt += GetClassName(pTalker->GetClass());
-                }
-                prompt += ".";
-                prompt += BuildPersona(me);
-                int16 aff = GetAffinity(senderGuid.GetCounter());
-                if (aff > 20)
-                    prompt += " You like this person and are warm toward them.";
-                else if (aff < -20)
-                    prompt += " You resent this person and are curt and cold with them.";
-                prompt += BuildSituation(me);
-                if (m_chatHistory.size() > 1)
-                {
-                    prompt += " Recent conversation:";
-                    for (auto const& line : m_chatHistory)
-                        prompt += "\n" + line;
-                    prompt += "\n";
-                }
-                prompt += " Reply in under 15 words, lowercase, casual, like a real player typing quickly. Do not repeat yourself. No quotation marks. They say: " + msg;
-                uint32 nowSec = (uint32)time(nullptr);
-                bool namedMe = msg.find(me->GetName()) != std::string::npos;
-
-                // if the message names a different bot, stay quiet
-                bool namedOther = false;
-                if (!namedMe)
-                {
-                    if (Group* pGroup = me->GetGroup())
-                    {
-                        for (GroupReference* itr = pGroup->GetFirstMember(); itr != nullptr; itr = itr->next())
-                        {
-                            Player* pMember = itr->getSource();
-                            if (pMember && pMember != me && msg.find(pMember->GetName()) != std::string::npos)
-                            {
-                                namedOther = true;
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                if (!namedOther && !senderIsBot)
-                {
-                    uint32 chance = namedMe ? 95 : (msgType == CHAT_MSG_PARTY ? 60 : 35);
-                    if (nowSec - m_lastChatReplyTime >= 8 &&
-                        (uint32)(rand() % 100) < chance &&
-                        sBotChatQueue.TryClaim(senderGuid, msg, nowSec))
-                    {
-                        m_lastChatReplyTime = nowSec;
-                        AdjustAffinity(senderGuid.GetCounter(), 1);
-                        sBotChatQueue.Enqueue(me->GetObjectGuid(), prompt, msgType);
-                    }
-                }
-            }
-        }
-    }
+    HandleBotChatPacket(packet);
     switch (packet->GetOpcode())
     {
         case SMSG_LEARNED_SPELL:
@@ -1028,27 +759,7 @@ void PartyBotAI::OnPlayerLogin()
 
 void PartyBotAI::UpdateAI(uint32 const diff)
 {
-    BotChatReply chatReply;
-    while (sBotChatQueue.PopReply(chatReply))
-    {
-        if (Player* pBot = ObjectAccessor::FindPlayer(chatReply.botGuid))
-        {
-            if (chatReply.chatType == CHAT_MSG_PARTY)
-            {
-                if (Group* pGroup = pBot->GetGroup())
-                {
-                    WorldPacket data;
-                    ChatHandler::BuildChatPacket(data, CHAT_MSG_PARTY, chatReply.text.c_str(), LANG_UNIVERSAL, 0, pBot->GetObjectGuid());
-                    pGroup->BroadcastPacket(&data, false);
-                }
-            }
-            else
-                pBot->Say(chatReply.text.c_str(), LANG_UNIVERSAL);
-            m_chatHistory.push_back(std::string(pBot->GetName()) + ": " + chatReply.text);
-            while (m_chatHistory.size() > 10)
-                m_chatHistory.pop_front();
-        }
-    }
+    UpdateBotChat();
 
     if (me->IsInWorld())
     {

@@ -19,6 +19,9 @@
 
 #include "PlayerAI.h"
 #include "WorldSession.h"
+#include <deque>
+#include <map>
+#include <string>
 
 struct PlayerBotEntry;
 class WorldSession;
@@ -38,12 +41,21 @@ class PlayerBotAI: public PlayerAI
 
         virtual bool OnSessionLoaded(PlayerBotEntry* entry, WorldSession* sess);
         virtual void OnBotEntryLoad(PlayerBotEntry* entry) {}
-        virtual void OnPacketReceived(WorldPacket const* /*packet*/) {} // server has sent a packet to this session
+        virtual void OnPacketReceived(WorldPacket const* packet) { HandleBotChatPacket(packet); }
         void UpdateAI(uint32 const /*diff*/) override; // Handle delayed teleports
         virtual void OnPlayerLogin() {}
         virtual void BeforeAddToMap(Player* player) {} // me=nullptr at call
         // Helpers
         bool SpawnNewPlayer(WorldSession* sess, uint8 classId, uint32 raceId, uint32 mapId, uint32 instanceId, float dx, float dy, float dz, float o, Player* pClone = nullptr);
+        void HandleBotChatPacket(WorldPacket const* packet);
+        void UpdateBotChat();
+	    uint32 m_lastChatReplyTime = 0;
+		std::deque<std::string> m_chatHistory;
+		std::map<uint32, int16> m_affinity;
+		uint32 m_lastEventReplyTime = 0;
+		bool m_wasAlive = true;
+		bool m_wasDead = false;
+		uint32 m_nextIdleChat = 0;
         PlayerBotEntry* botEntry;
 };
 
@@ -96,4 +108,10 @@ class PopulateAreaBotAI: public PlayerBotAI
         float _radius;
         uint32 _team;
 };
+char const* GetZoneName(uint32 zoneId);
+char const* GetRaceName(uint8 race);
+char const* GetClassName(uint8 cls);
+std::string BuildPersona(Player* me);
+std::string BuildSituation(Player* me);
+
 #endif

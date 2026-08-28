@@ -107,15 +107,8 @@ public:
     float m_z = 0.0f;
     float m_o = 0.0f;
     bool m_resetSpellData = false;
-	uint32 m_lastChatReplyTime = 0;
-	uint32 m_lastEventReplyTime = 0;
-    uint32 m_nextIdleChat = 0;
-	std::map<uint32, int16> m_affinity;
-	std::deque<std::string> m_chatHistory;
     int16 GetAffinity(uint32 playerGuid);
     void AdjustAffinity(uint32 playerGuid, int16 delta);
-	bool m_wasAlive = true;
-	bool m_wasDead = false;
 };
 
 #endif
