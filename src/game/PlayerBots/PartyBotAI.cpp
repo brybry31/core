@@ -717,10 +717,79 @@ static std::string BuildPersona(Player* me)
     return s;
 }
 
+static char const* GetZoneName(uint32 zoneId)
+{
+    switch (zoneId)
+    {
+        // Eastern Kingdoms
+        case 1:    return "Dun Morogh";
+        case 3:    return "Badlands";
+        case 4:    return "Blasted Lands";
+        case 8:    return "Swamp of Sorrows";
+        case 10:   return "Duskwood";
+        case 11:   return "Wetlands";
+        case 12:   return "Elwynn Forest";
+        case 25:   return "Blackrock Mountain";
+        case 28:   return "Western Plaguelands";
+        case 33:   return "Stranglethorn Vale";
+        case 36:   return "Alterac Mountains";
+        case 38:   return "Loch Modan";
+        case 40:   return "Westfall";
+        case 41:   return "Deadwind Pass";
+        case 44:   return "Redridge Mountains";
+        case 45:   return "Arathi Highlands";
+        case 46:   return "Burning Steppes";
+        case 47:   return "The Hinterlands";
+        case 51:   return "Searing Gorge";
+        case 85:   return "Tirisfal Glades";
+        case 87:   return "Gilneas";
+        case 130:  return "Silverpine Forest";
+        case 139:  return "Eastern Plaguelands";
+        case 141:  return "Teldrassil";
+        case 148:  return "Darkshore";
+        case 267:  return "Hillsbrad Foothills";
+        case 331:  return "Ashenvale";
+        case 357:  return "Feralas";
+        case 361:  return "Felwood";
+        case 400:  return "Thousand Needles";
+        case 405:  return "Desolace";
+        case 406:  return "Stonetalon Mountains";
+        case 440:  return "Tanaris";
+        case 490:  return "Un'Goro Crater";
+        case 493:  return "Moonglade";
+        case 618:  return "Winterspring";
+        case 1377: return "Silithus";
+        case 1519: return "Stormwind City";
+        case 1537: return "Ironforge";
+        case 1497: return "Undercity";
+        case 1637: return "Orgrimmar";
+        case 1638: return "Thunder Bluff";
+        case 1657: return "Darnassus";
+        case 215:  return "Mulgore";
+        case 14:   return "Durotar";
+        case 17:   return "The Barrens";
+        case 15:   return "Dustwallow Marsh";
+        case 16:   return "Azshara";
+        case 2597: return "Alterac Valley";
+        case 3277: return "Warsong Gulch";
+        case 3358: return "Arathi Basin";
+        default:   return nullptr;
+    }
+}
+
 static std::string BuildSituation(Player* me)
 {
     std::string s;
 
+    if (char const* zone = GetZoneName(me->GetZoneId()))
+    {
+        s += " You are currently in ";
+        s += zone;
+        s += ".";
+    }
+    else
+        printf("[ZONE] unmapped zone id %u\n", me->GetZoneId());
+        
     uint32 hpPct = me->GetMaxHealth() ? (uint32)((me->GetHealth() * 100) / me->GetMaxHealth()) : 100;
     if (me->IsInCombat())
         s += " You are currently in combat and fighting.";
