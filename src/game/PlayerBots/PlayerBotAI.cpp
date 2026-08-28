@@ -65,7 +65,7 @@ void PlayerBotAI::HandleBotChatPacket(WorldPacket const* packet)
         senderName = pTalker->GetName();
         senderIsBot = pTalker->GetSession() && pTalker->GetSession()->GetBot() != nullptr;
     }
-
+    printf("[BOTCHAT] %s heard %s: %s\n", me->GetName(), senderName.c_str(), msg.c_str());
     if (senderIsBot)
         return;
 
