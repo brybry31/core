@@ -704,6 +704,58 @@ static std::string BuildSituation(Player* me)
 }
 void PartyBotAI::OnPacketReceived(WorldPacket const* packet)
 {
+    switch (packet->GetOpcode())
+    {
+        case SMSG_LEVELUP_INFO:
+        case SMSG_LOOT_RESPONSE:
+        case SMSG_ITEM_PUSH_RESULT:
+        case SMSG_PARTYKILLLOG:
+            //printf("[BOTEVENT] %s got %s\n", me->GetName(), LookupOpcodeName(packet->GetOpcode()));
+            break;
+        default:
+            break;
+    }
+    if (packet->GetOpcode() == SMSG_ITEM_PUSH_RESULT)
+    {
+        WorldPacket copy(*packet);
+        ObjectGuid looterGuid;
+        uint32 received, created, showInChat, itemSlot, itemEntry;
+        uint8 bagSlot;
+        copy >> looterGuid;
+        copy >> received;
+        copy >> created;
+        copy >> showInChat;
+        copy >> bagSlot;
+        copy >> itemSlot;
+        copy >> itemEntry;
+
+        if (ItemPrototype const* pProto = sObjectMgr.GetItemPrototype(itemEntry))
+        {
+        	//printf("[LOOT] %s got %s quality=%u\n", me->GetName(), pProto->Name1, pProto->Quality);
+            if (pProto->Quality >= ITEM_QUALITY_RARE)
+            {
+                uint32 nowSec = (uint32)time(nullptr);
+                if (nowSec - m_lastEventReplyTime >= 120 &&
+                    (rand() % 100) < 50 &&
+                    sBotChatQueue.TryClaim(ObjectGuid(), pProto->Name1, nowSec))
+                {
+                    m_lastEventReplyTime = nowSec;
+                    std::string prompt = "You are ";
+                    prompt += me->GetName();
+                    prompt += ", a level " + std::to_string(me->GetLevel()) + " ";
+                    prompt += GetRaceName(me->GetRace());
+                    prompt += " ";
+                    prompt += GetClassName(me->GetClass());
+                    prompt += " in vanilla World of Warcraft 1.12.";
+                    prompt += BuildPersona(me);
+                    prompt += " Your group just looted a rare item called ";
+                    prompt += pProto->Name1;
+                    prompt += ". React in under 10 words, lowercase, casual. No quotation marks.";
+                    sBotChatQueue.Enqueue(me->GetObjectGuid(), prompt, CHAT_MSG_PARTY);
+                }
+            }
+        }
+    }
     if (packet->GetOpcode() == SMSG_MESSAGECHAT)
     {
         WorldPacket copy(*packet);

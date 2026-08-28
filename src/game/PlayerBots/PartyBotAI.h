@@ -107,6 +107,7 @@ public:
     float m_o = 0.0f;
     bool m_resetSpellData = false;
 	uint32 m_lastChatReplyTime = 0;
+	uint32 m_lastEventReplyTime = 0;
 	std::deque<std::string> m_chatHistory;
 };
 
