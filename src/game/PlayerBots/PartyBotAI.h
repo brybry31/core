@@ -20,6 +20,7 @@
 #include "CombatBotBaseAI.h"
 #include "Group.h"
 #include "ObjectAccessor.h"
+#include <deque>
 
 class PartyBotAI : public CombatBotBaseAI
 {
@@ -106,6 +107,7 @@ public:
     float m_o = 0.0f;
     bool m_resetSpellData = false;
 	uint32 m_lastChatReplyTime = 0;
+	std::deque<std::string> m_chatHistory;
 };
 
 #endif

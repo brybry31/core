@@ -36,9 +36,20 @@ void BotChatQueue::Stop()
         m_worker.join();
 }
 
-bool BotChatQueue::Enqueue(ObjectGuid botGuid, std::string const& prompt)
+bool BotChatQueue::TryClaim(ObjectGuid speaker, std::string const& msg, uint32 now)
 {
-	Start();
+    std::lock_guard<std::mutex> lock(m_claimMutex);
+    if (m_lastClaimSpeaker == speaker && m_lastClaimMsg == msg && (now - m_lastClaimTime) < 5)
+        return false;
+    m_lastClaimSpeaker = speaker;
+    m_lastClaimMsg = msg;
+    m_lastClaimTime = now;
+    return true;
+}
+
+bool BotChatQueue::Enqueue(ObjectGuid botGuid, std::string const& prompt, uint8 chatType)
+{
+    Start();
     std::lock_guard<std::mutex> lock(m_requestMutex);
     if (m_requests.size() >= MAX_PENDING)
         return false;
@@ -46,6 +57,7 @@ bool BotChatQueue::Enqueue(ObjectGuid botGuid, std::string const& prompt)
     req.botGuid = botGuid;
     req.prompt = prompt;
     req.queuedAt = NowSeconds();
+    req.chatType = chatType;
     m_requests.push_back(req);
     return true;
 }
@@ -132,6 +144,7 @@ void BotChatQueue::WorkerLoop()
             reply.botGuid = req.botGuid;
             reply.text = text;
             reply.deliverAt = NowSeconds() + 2 + (rand() % 11);
+            reply.chatType = req.chatType;
             std::lock_guard<std::mutex> lock(m_replyMutex);
             m_replies.push_back(reply);
         }

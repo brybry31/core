@@ -30,6 +30,11 @@
 #include <curl/curl.h>
 #include "../../../dep/json/json.hpp"
 #include "BotChatQueue.h"
+#include "GridNotifiers.h"
+#include "GridNotifiersImpl.h"
+#include "CellImpl.h"
+#include "Group.h"
+#include "WorldSession.h"
 
 #include <random>
 
@@ -624,6 +629,37 @@ static char const* GetClassName(uint8 cls)
         default: return "adventurer";
     }
 }
+static std::string BuildSituation(Player* me)
+{
+    std::string s;
+
+    uint32 hpPct = me->GetMaxHealth() ? (uint32)((me->GetHealth() * 100) / me->GetMaxHealth()) : 100;
+    if (me->IsInCombat())
+        s += " You are currently in combat and fighting.";
+    else if (hpPct < 40)
+        s += " You are badly wounded and resting.";
+    else if (hpPct < 80)
+        s += " You are a bit beaten up but fine.";
+
+    std::list<Player*> nearby;
+    MaNGOS::AnyPlayerInObjectRangeCheck check(me, 40.0f);
+    MaNGOS::PlayerListSearcher<MaNGOS::AnyPlayerInObjectRangeCheck> searcher(nearby, check);
+    Cell::VisitWorldObjects(me, searcher, 40.0f);
+
+    uint32 others = 0;
+    for (Player* p : nearby)
+        if (p != me)
+            ++others;
+
+    if (others == 0)
+        s += " Nobody else is around.";
+    else if (others == 1)
+        s += " There is one other person nearby.";
+    else
+        s += " There are " + std::to_string(others) + " other people nearby.";
+
+    return s;
+}
 void PartyBotAI::OnPacketReceived(WorldPacket const* packet)
 {
     if (packet->GetOpcode() == SMSG_MESSAGECHAT)
@@ -645,9 +681,16 @@ void PartyBotAI::OnPacketReceived(WorldPacket const* packet)
             if (senderGuid != me->GetObjectGuid() && lang != LANG_ADDON)
             {
                 std::string senderName = "unknown";
+                bool senderIsBot = false;
                 if (Player* pSender = ObjectAccessor::FindPlayer(senderGuid))
+                {
                     senderName = pSender->GetName();
+                    senderIsBot = pSender->GetSession() && pSender->GetSession()->GetBot() != nullptr;
+                }
                 printf("[BOTCHAT] %s heard %s (type=%u lang=%u): %s\n", me->GetName(), senderName.c_str(), (uint32)msgType, lang, msg.c_str());
+                m_chatHistory.push_back(senderName + ": " + msg);
+                while (m_chatHistory.size() > 10)
+                    m_chatHistory.pop_front();
                 std::string prompt = "You are ";
                 prompt += me->GetName();
                 prompt += ", a level " + std::to_string(me->GetLevel());
@@ -665,14 +708,47 @@ void PartyBotAI::OnPacketReceived(WorldPacket const* packet)
                     prompt += " ";
                     prompt += GetClassName(pTalker->GetClass());
                 }
-                prompt += ". Reply in under 15 words, lowercase, casual, like a real player typing quickly. No quotation marks. They say: " + msg;
+                prompt += ".";
+                prompt += BuildSituation(me);
+                if (m_chatHistory.size() > 1)
+                {
+                    prompt += " Recent conversation:";
+                    for (auto const& line : m_chatHistory)
+                        prompt += "\n" + line;
+                    prompt += "\n";
+                }
+                prompt += " Reply in under 15 words, lowercase, casual, like a real player typing quickly. Do not repeat yourself. No quotation marks. They say: " + msg;
                 uint32 nowSec = (uint32)time(nullptr);
                 bool namedMe = msg.find(me->GetName()) != std::string::npos;
-                uint32 chance = namedMe ? 95 : (msgType == CHAT_MSG_PARTY ? 60 : 35);
-                if (nowSec - m_lastChatReplyTime >= 8 && (uint32)(rand() % 100) < chance)
+
+                // if the message names a different bot, stay quiet
+                bool namedOther = false;
+                if (!namedMe)
                 {
-                    m_lastChatReplyTime = nowSec;
-                    sBotChatQueue.Enqueue(me->GetObjectGuid(), prompt);
+                    if (Group* pGroup = me->GetGroup())
+                    {
+                        for (GroupReference* itr = pGroup->GetFirstMember(); itr != nullptr; itr = itr->next())
+                        {
+                            Player* pMember = itr->getSource();
+                            if (pMember && pMember != me && msg.find(pMember->GetName()) != std::string::npos)
+                            {
+                                namedOther = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (!namedOther && !senderIsBot)
+                {
+                    uint32 chance = namedMe ? 95 : (msgType == CHAT_MSG_PARTY ? 60 : 35);
+                    if (nowSec - m_lastChatReplyTime >= 8 &&
+                        (uint32)(rand() % 100) < chance &&
+                        sBotChatQueue.TryClaim(senderGuid, msg, nowSec))
+                    {
+                        m_lastChatReplyTime = nowSec;
+                        sBotChatQueue.Enqueue(me->GetObjectGuid(), prompt, msgType);
+                    }
                 }
             }
         }
@@ -740,7 +816,23 @@ void PartyBotAI::UpdateAI(uint32 const diff)
     while (sBotChatQueue.PopReply(chatReply))
     {
         if (Player* pBot = ObjectAccessor::FindPlayer(chatReply.botGuid))
-            pBot->Say(chatReply.text.c_str(), LANG_UNIVERSAL);
+        {
+            if (chatReply.chatType == CHAT_MSG_PARTY)
+            {
+                if (Group* pGroup = pBot->GetGroup())
+                {
+                    WorldPacket data;
+                    ChatHandler::BuildChatPacket(data, CHAT_MSG_PARTY, chatReply.text.c_str(), LANG_UNIVERSAL, 0, pBot->GetObjectGuid());
+                    pGroup->BroadcastPacket(&data, false);
+                }
+            }
+            else
+                pBot->Say(chatReply.text.c_str(), LANG_UNIVERSAL);
+
+            m_chatHistory.push_back(std::string(pBot->GetName()) + ": " + chatReply.text);
+            while (m_chatHistory.size() > 10)
+                m_chatHistory.pop_front();
+        }
     }
     m_updateTimer.Update(diff);
     if (m_updateTimer.Passed())

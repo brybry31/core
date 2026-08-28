@@ -13,6 +13,7 @@ struct BotChatRequest
     ObjectGuid botGuid;
     std::string prompt;
     uint32 queuedAt;
+	uint8 chatType;
 };
 
 struct BotChatReply
@@ -20,6 +21,7 @@ struct BotChatReply
     ObjectGuid botGuid;
     std::string text;
 	uint32 deliverAt;
+	uint8 chatType;
 };
 
 class BotChatQueue
@@ -29,7 +31,8 @@ public:
 
     void Start();
     void Stop();
-    bool Enqueue(ObjectGuid botGuid, std::string const& prompt);
+    bool Enqueue(ObjectGuid botGuid, std::string const& prompt, uint8 chatType);
+	bool TryClaim(ObjectGuid speaker, std::string const& msg, uint32 now);
     bool PopReply(BotChatReply& out);
 
 private:
@@ -41,6 +44,10 @@ private:
     std::mutex m_replyMutex;
     std::thread m_worker;
     std::atomic<bool> m_running{false};
+	ObjectGuid m_lastClaimSpeaker;
+    std::string m_lastClaimMsg;
+    uint32 m_lastClaimTime = 0;
+    std::mutex m_claimMutex;
 
     static uint32 const MAX_PENDING = 8;
     static uint32 const MAX_AGE_SECONDS = 20;
