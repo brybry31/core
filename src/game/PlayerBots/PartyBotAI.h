@@ -114,6 +114,7 @@ public:
     int16 GetAffinity(uint32 playerGuid);
     void AdjustAffinity(uint32 playerGuid, int16 delta);
 	bool m_wasAlive = true;
+	bool m_wasDead = false;
 };
 
 #endif

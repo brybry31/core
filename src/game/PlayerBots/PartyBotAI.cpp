@@ -637,13 +637,27 @@ int16 PartyBotAI::GetAffinity(uint32 playerGuid)
         return itr->second;
 
     int16 value = 0;
+    uint32 lastSeen = 0;
     if (auto result = CharacterDatabase.PQuery(
-        "SELECT affinity FROM bot_relationship WHERE bot_guid = %u AND player_guid = %u",
+        "SELECT affinity, last_seen FROM bot_relationship WHERE bot_guid = %u AND player_guid = %u",
         me->GetGUIDLow(), playerGuid))
     {
         Field* fields = result->Fetch();
         value = (int16)fields[0].GetInt32();
+        lastSeen = fields[1].GetUInt32();
     }
+
+    // decay one point per day toward zero
+    if (lastSeen && value != 0)
+    {
+        uint32 daysPassed = ((uint32)time(nullptr) - lastSeen) / 86400;
+        if (daysPassed > 0)
+        {
+            int16 decay = (int16)std::min<uint32>(daysPassed, (uint32)abs(value));
+            value += (value > 0) ? -decay : decay;
+        }
+    }
+
     m_affinity[playerGuid] = value;
     return value;
 }
@@ -991,6 +1005,14 @@ void PartyBotAI::UpdateAI(uint32 const diff)
                 sBotChatQueue.Enqueue(me->GetObjectGuid(), prompt, CHAT_MSG_PARTY);
             }
         }
+        if (!m_wasAlive && aliveNow && m_wasDead)
+        {
+            if (Player* pLeader = GetPartyLeader())
+                AdjustAffinity(pLeader->GetObjectGuid().GetCounter(), 5);
+            m_wasDead = false;
+        }
+        if (!aliveNow)
+            m_wasDead = true;
         m_wasAlive = aliveNow;
     }
 
