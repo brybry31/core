@@ -745,6 +745,7 @@ void AuthSocket::_HandleLogonProof__PostRecv(std::shared_ptr<sAuthLogonProof_C c
         if (!VerifyVersion(lp->A, sizeof(lp->A), lp->crc_hash, false))
         {
             sLog.Out(LOG_BASIC, LOG_LVL_BASIC, "[AuthChallenge] Account %s tried to login with modified client!", m_login.c_str());
+            sLog.Out(LOG_BASIC, LOG_LVL_BASIC, "[AuthChallenge] DEBUG build=%u os=%s platform=%s", m_build, m_os.c_str(), m_platform.c_str());
 
             std::shared_ptr<ByteBuffer> pkt(new ByteBuffer());
             *pkt << (uint8) CMD_AUTH_LOGON_PROOF;
