@@ -629,6 +629,48 @@ static char const* GetClassName(uint8 cls)
         default: return "adventurer";
     }
 }
+
+static std::string BuildPersona(Player* me)
+{
+    static char const* temperaments[] = {
+        "gruff and impatient",
+        "cheerful and chatty",
+        "quiet and blunt",
+        "sarcastic and dry",
+        "nervous and overly polite",
+        "cocky and boastful",
+        "weary and world-tired",
+        "friendly but easily distracted"
+    };
+
+    static char const* quirks[] = {
+        "You complain about your gear a lot.",
+        "You are always broke and mention gold often.",
+        "You think you are underrated at your class.",
+        "You are obsessed with finding a good grinding spot.",
+        "You bring up an old wipe you still resent.",
+        "You are saving up for a mount and mention it.",
+        "You dislike crowded cities.",
+        "You are convinced the drop rates are rigged."
+    };
+
+    static char const* styles[] = {
+        "You type in short fragments and abbreviate a lot.",
+        "You rarely use punctuation.",
+        "You use vanilla wow slang like lf1m, wtb, oom, ty, np.",
+        "You sometimes trail off mid sentence."
+    };
+
+    uint32 h = me->GetObjectGuid().GetCounter();
+    std::string s = " Your personality is ";
+    s += temperaments[h % 8];
+    s += ". ";
+    s += quirks[(h / 8) % 8];
+    s += " ";
+    s += styles[(h / 64) % 4];
+    return s;
+}
+
 static std::string BuildSituation(Player* me)
 {
     std::string s;
@@ -709,6 +751,7 @@ void PartyBotAI::OnPacketReceived(WorldPacket const* packet)
                     prompt += GetClassName(pTalker->GetClass());
                 }
                 prompt += ".";
+                prompt += BuildPersona(me);
                 prompt += BuildSituation(me);
                 if (m_chatHistory.size() > 1)
                 {
