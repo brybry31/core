@@ -109,6 +109,7 @@ public:
     bool m_resetSpellData = false;
 	uint32 m_lastChatReplyTime = 0;
 	uint32 m_lastEventReplyTime = 0;
+    uint32 m_nextIdleChat = 0;
 	std::map<uint32, int16> m_affinity;
 	std::deque<std::string> m_chatHistory;
     int16 GetAffinity(uint32 playerGuid);

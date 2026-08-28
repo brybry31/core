@@ -1084,7 +1084,40 @@ void PartyBotAI::UpdateAI(uint32 const diff)
             m_wasDead = true;
         m_wasAlive = aliveNow;
     }
+    if (me->IsInWorld() && me->IsAlive() && !me->IsInCombat())
+    {
+        uint32 nowSec = (uint32)time(nullptr);
+        if (m_nextIdleChat == 0)
+            m_nextIdleChat = nowSec + 300 + (rand() % 600);
+        else if (nowSec >= m_nextIdleChat)
+        {
+            m_nextIdleChat = nowSec + 300 + (rand() % 600);
 
+            bool realPlayerNear = false;
+            std::list<Player*> nearby;
+            MaNGOS::AnyPlayerInObjectRangeCheck check(me, 40.0f);
+            MaNGOS::PlayerListSearcher<MaNGOS::AnyPlayerInObjectRangeCheck> searcher(nearby, check);
+            Cell::VisitWorldObjects(me, searcher, 40.0f);
+            for (Player* p : nearby)
+                if (p != me && (!p->GetSession() || !p->GetSession()->GetBot()))
+                    realPlayerNear = true;
+
+            if (realPlayerNear && sBotChatQueue.TryClaim(ObjectGuid(), "idle", nowSec))
+            {
+                std::string prompt = "You are ";
+                prompt += me->GetName();
+                prompt += ", a level " + std::to_string(me->GetLevel()) + " ";
+                prompt += GetRaceName(me->GetRace());
+                prompt += " ";
+                prompt += GetClassName(me->GetClass());
+                prompt += " in vanilla World of Warcraft 1.12.";
+                prompt += BuildPersona(me);
+                prompt += BuildSituation(me);
+                prompt += " Say something unprompted to pass the time, in under 12 words, lowercase, casual. Do not ask a question. No quotation marks.";
+                sBotChatQueue.Enqueue(me->GetObjectGuid(), prompt, CHAT_MSG_PARTY);
+            }
+        }
+    }
     m_updateTimer.Update(diff);
     if (m_updateTimer.Passed())
         m_updateTimer.Reset(PB_UPDATE_INTERVAL);
