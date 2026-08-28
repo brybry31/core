@@ -612,6 +612,8 @@ void MageOrgrimmarAttackerAI::UpdateAI(uint32 const diff)
 
 void PopulateAreaBotAI::BeforeAddToMap(Player* player)
 {
+	printf("[POPBOT] team=%u want=%u instance=%u map=%u want_map=%u\n",
+    player->GetTeam(), _team, player->GetInstanceId(), player->GetMapId(), _map);
     if (player->GetInstanceId() || player->GetTeam() != _team)
         return;
     if (player->GetMapId() != _map || !player->IsWithinDist3d(_x, _y, _z, _radius * 2))
@@ -621,6 +623,7 @@ void PopulateAreaBotAI::BeforeAddToMap(Player* player)
         float z = _z;
         Map* map = sMapMgr.CreateMap(_map, player);
         while (!map->GetWalkRandomPosition(nullptr, x, y, z, _radius));
+        printf("[POPBOT] relocating to %f %f %f on map %u\n", x, y, z, _map);
         player->Relocate(x, y, z);
         player->SetLocationMapId(_map);
     }
