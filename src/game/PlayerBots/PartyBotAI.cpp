@@ -630,6 +630,38 @@ static char const* GetClassName(uint8 cls)
     }
 }
 
+int16 PartyBotAI::GetAffinity(uint32 playerGuid)
+{
+    auto itr = m_affinity.find(playerGuid);
+    if (itr != m_affinity.end())
+        return itr->second;
+
+    int16 value = 0;
+    if (auto result = CharacterDatabase.PQuery(
+        "SELECT affinity FROM bot_relationship WHERE bot_guid = %u AND player_guid = %u",
+        me->GetGUIDLow(), playerGuid))
+    {
+        Field* fields = result->Fetch();
+        value = (int16)fields[0].GetInt32();
+    }
+    m_affinity[playerGuid] = value;
+    return value;
+}
+
+void PartyBotAI::AdjustAffinity(uint32 playerGuid, int16 delta)
+{
+    int16 value = GetAffinity(playerGuid) + delta;
+    if (value > 100) value = 100;
+    if (value < -100) value = -100;
+    m_affinity[playerGuid] = value;
+
+    CharacterDatabase.PExecute(
+        "INSERT INTO bot_relationship (bot_guid, player_guid, affinity, encounters, last_seen) "
+        "VALUES (%u, %u, %d, 1, %u) "
+        "ON DUPLICATE KEY UPDATE affinity = %d, encounters = encounters + 1, last_seen = %u",
+        me->GetGUIDLow(), playerGuid, value, (uint32)time(nullptr), value, (uint32)time(nullptr));
+}
+
 static std::string BuildPersona(Player* me)
 {
     static char const* temperaments[] = {
@@ -804,6 +836,11 @@ void PartyBotAI::OnPacketReceived(WorldPacket const* packet)
                 }
                 prompt += ".";
                 prompt += BuildPersona(me);
+                int16 aff = GetAffinity(senderGuid.GetCounter());
+                if (aff > 20)
+                    prompt += " You like this person and are warm toward them.";
+                else if (aff < -20)
+                    prompt += " You resent this person and are curt and cold with them.";
                 prompt += BuildSituation(me);
                 if (m_chatHistory.size() > 1)
                 {
@@ -842,6 +879,7 @@ void PartyBotAI::OnPacketReceived(WorldPacket const* packet)
                         sBotChatQueue.TryClaim(senderGuid, msg, nowSec))
                     {
                         m_lastChatReplyTime = nowSec;
+                        AdjustAffinity(senderGuid.GetCounter(), 1);
                         sBotChatQueue.Enqueue(me->GetObjectGuid(), prompt, msgType);
                     }
                 }

@@ -21,6 +21,7 @@
 #include "Group.h"
 #include "ObjectAccessor.h"
 #include <deque>
+#include <map>
 
 class PartyBotAI : public CombatBotBaseAI
 {
@@ -108,7 +109,10 @@ public:
     bool m_resetSpellData = false;
 	uint32 m_lastChatReplyTime = 0;
 	uint32 m_lastEventReplyTime = 0;
+	std::map<uint32, int16> m_affinity;
 	std::deque<std::string> m_chatHistory;
+    int16 GetAffinity(uint32 playerGuid);
+    void AdjustAffinity(uint32 playerGuid, int16 delta);
 };
 
 #endif
