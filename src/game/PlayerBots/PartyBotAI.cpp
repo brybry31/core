@@ -961,12 +961,39 @@ void PartyBotAI::UpdateAI(uint32 const diff)
             }
             else
                 pBot->Say(chatReply.text.c_str(), LANG_UNIVERSAL);
-
             m_chatHistory.push_back(std::string(pBot->GetName()) + ": " + chatReply.text);
             while (m_chatHistory.size() > 10)
                 m_chatHistory.pop_front();
         }
     }
+
+    if (me->IsInWorld())
+    {
+        bool aliveNow = me->IsAlive();
+        if (m_wasAlive && !aliveNow)
+        {
+            if (Player* pLeader = GetPartyLeader())
+                AdjustAffinity(pLeader->GetObjectGuid().GetCounter(), -3);
+
+            uint32 nowSec = (uint32)time(nullptr);
+            if (nowSec - m_lastEventReplyTime >= 60 && sBotChatQueue.TryClaim(ObjectGuid(), "death", nowSec))
+            {
+                m_lastEventReplyTime = nowSec;
+                std::string prompt = "You are ";
+                prompt += me->GetName();
+                prompt += ", a level " + std::to_string(me->GetLevel()) + " ";
+                prompt += GetRaceName(me->GetRace());
+                prompt += " ";
+                prompt += GetClassName(me->GetClass());
+                prompt += " in vanilla World of Warcraft 1.12.";
+                prompt += BuildPersona(me);
+                prompt += " You just died in combat. React in under 10 words, lowercase, casual, annoyed or resigned. No quotation marks.";
+                sBotChatQueue.Enqueue(me->GetObjectGuid(), prompt, CHAT_MSG_PARTY);
+            }
+        }
+        m_wasAlive = aliveNow;
+    }
+
     m_updateTimer.Update(diff);
     if (m_updateTimer.Passed())
         m_updateTimer.Reset(PB_UPDATE_INTERVAL);

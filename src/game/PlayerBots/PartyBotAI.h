@@ -113,6 +113,7 @@ public:
 	std::deque<std::string> m_chatHistory;
     int16 GetAffinity(uint32 playerGuid);
     void AdjustAffinity(uint32 playerGuid, int16 delta);
+	bool m_wasAlive = true;
 };
 
 #endif
